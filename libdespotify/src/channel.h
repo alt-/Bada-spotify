@@ -39,7 +39,7 @@ struct _channel
 	char name[256];
 
 	/* pointer to private storage */
-	void *private;
+	void *private_storage;
 
 	/* function pointer */
 	channel_callback callback;

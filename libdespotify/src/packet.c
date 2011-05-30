@@ -28,7 +28,7 @@ int packet_read (SESSION * session, PHEADER * h, unsigned char **payload)
 
 	packet_len = 0;
 	if ((ret = block_read (session->ap_sock, h, 3)) != 3) {
-		DSFYDEBUG ("read short count %d, expected 3 (header)\n", ret);
+		DSFYINFO ("read short count %d, expected 3 (header)\n", ret);
 		return -1;
 	}
 
@@ -56,7 +56,7 @@ int packet_read (SESSION * session, PHEADER * h, unsigned char **payload)
 
 	if ((ret =
 	     block_read (session->ap_sock, ptr, packet_len)) != packet_len) {
-		DSFYDEBUG
+		DSFYINFO
 			("block_read() for cmd=0x%02x read short count %d, expected %d\n",
 			 h->cmd, ret, packet_len);
 		return -1;

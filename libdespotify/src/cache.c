@@ -1,4 +1,6 @@
+#ifndef BADA
 #include <dirent.h>
+#endif
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
@@ -13,6 +15,9 @@ char cache_directory[PATH_MAX];
 char cache_filename[PATH_MAX];
 
 bool cache_init(){
+#ifdef BADA
+	return false;
+#else
     char *ptr;
 
     if((ptr = getenv("XDG_CACHE_HOME")) != NULL){
@@ -49,9 +54,11 @@ bool cache_init(){
     }
 
     return true;
+#endif
 }
 
 void cache_clear(){
+#ifndef BADA
     DIR *dir = opendir(cache_directory);
     struct dirent *dirp;
 
@@ -72,6 +79,7 @@ void cache_clear(){
 
         remove(cache_filename);
     }
+#endif
 }
 
 bool cache_contains(unsigned char *id){

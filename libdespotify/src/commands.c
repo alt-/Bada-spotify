@@ -22,6 +22,7 @@
  */
 static int dump_generic (CHANNEL * ch, unsigned char *buf, unsigned short len)
 {
+#ifndef BADA
 	FILE *fd;
 	char filename[512];
 
@@ -42,8 +43,9 @@ static int dump_generic (CHANNEL * ch, unsigned char *buf, unsigned short len)
 
 		return 0;
 	}
-
+#endif
 	return -1;
+
 }
 
 int cmd_send_cache_hash (SESSION * session)
@@ -95,7 +97,7 @@ int cmd_requestad (SESSION * session, unsigned char ad_type)
  *
  */
 int cmd_request_image (SESSION * session, unsigned char *hash,
-		       channel_callback callback, void *private)
+		       channel_callback callback, void *private_storage)
 {
 	CHANNEL *ch;
 	int ret;
@@ -105,7 +107,7 @@ int cmd_request_image (SESSION * session, unsigned char *hash,
 	strcpy (buf, "image-");
 	hex_bytes_to_ascii (hash, buf + 6, 20);
 
-	ch = channel_register (buf, callback, private);
+	ch = channel_register (buf, callback, private_storage);
 	DSFYDEBUG
 		("allocated channel %d, retrieving img with UUID %s\n",
 		 ch->channel_id, buf + 6);
@@ -127,7 +129,7 @@ int cmd_request_image (SESSION * session, unsigned char *hash,
  *
  */
 int cmd_search (SESSION * session, char *searchtext, unsigned int offset,
-		unsigned int limit, channel_callback callback, void *private)
+		unsigned int limit, channel_callback callback, void *private_storage)
 {
 	CHANNEL *ch;
 	int ret;
@@ -139,7 +141,7 @@ int cmd_search (SESSION * session, char *searchtext, unsigned int offset,
 	struct buf* b = buf_new();
 
 	snprintf (buf, sizeof (buf), "Search-%s", searchtext);
-	ch = channel_register (buf, callback, private);
+	ch = channel_register (buf, callback, private_storage);
 
 	DSFYDEBUG ("allocated channel %d, searching for '%s'\n",
 		   ch->channel_id, searchtext);
@@ -180,7 +182,7 @@ int cmd_token_notify (SESSION * session)
 
 int cmd_aeskey (SESSION * session, unsigned char *file_id,
 		unsigned char *track_id, channel_callback callback,
-		void *private)
+		void *private_storage)
 {
 	int ret;
 	CHANNEL *ch;
@@ -195,9 +197,9 @@ int cmd_aeskey (SESSION * session, unsigned char *file_id,
 	/* Allocate a channel and set its name to key-<file id> */
 	strcpy (buf, "key-");
 	hex_bytes_to_ascii (file_id, buf + 4, 20);
-	ch = channel_register (buf, callback, private);
+	ch = channel_register (buf, callback, private_storage);
 	DSFYDEBUG
-		("allocated channel %d, retrieving AES key for file '%.40s'\n",
+		("allocated channel %d, retrieving AES key for file '%s'\n",
 		 ch->channel_id, buf);
 
 	/* Force DATA state to be able to handle these packets with the channel infrastructure */
@@ -268,14 +270,14 @@ int cmd_action (SESSION * session, unsigned char *file_id,
 int cmd_getsubstreams (SESSION * session, unsigned char *file_id,
 		       unsigned int offset, unsigned int length,
 		       unsigned int unknown_200k, channel_callback callback,
-		       void *private)
+		       void *private_storage)
 {
 	char buf[512];
 	CHANNEL *ch;
 	int ret;
 
 	hex_bytes_to_ascii (file_id, buf, 20);
-	ch = channel_register (buf, callback, private);
+	ch = channel_register (buf, callback, private_storage);
 	DSFYDEBUG
 		("cmd_getsubstreams: allocated channel %d, retrieving song '%s'\n",
 		 ch->channel_id, ch->name);
@@ -324,7 +326,7 @@ int cmd_getsubstreams (SESSION * session, unsigned char *file_id,
  *
  */
 int cmd_browse (SESSION * session, unsigned char kind, unsigned char *idlist,
-		int num, channel_callback callback, void *private)
+		int num, channel_callback callback, void *private_storage)
 {
 	CHANNEL *ch;
 	char buf[256];
@@ -335,7 +337,7 @@ int cmd_browse (SESSION * session, unsigned char kind, unsigned char *idlist,
 
 	strcpy (buf, "browse-");
 	hex_bytes_to_ascii(idlist, buf + 7, 16);
-	ch = channel_register (buf, callback, private);
+	ch = channel_register (buf, callback, private_storage);
 
 	struct buf* b = buf_new();
 	buf_append_u16(b, ch->channel_id);
@@ -367,7 +369,7 @@ int cmd_browse (SESSION * session, unsigned char kind, unsigned char *idlist,
  *
  */
 int cmd_getplaylist (SESSION * session, unsigned char *playlist_id,
-		     int revision, channel_callback callback, void *private)
+		     int revision, channel_callback callback, void *private_storage)
 {
 	CHANNEL *ch;
 	char buf[256];
@@ -376,7 +378,7 @@ int cmd_getplaylist (SESSION * session, unsigned char *playlist_id,
 	strcpy (buf, "playlist-");
 	hex_bytes_to_ascii (playlist_id, buf + 9, 17);
 	buf[9 + 2 * 17] = 0;
-	ch = channel_register (buf, callback, private);
+	ch = channel_register (buf, callback, private_storage);
 
 	struct buf* b = buf_new();
 	buf_append_u16(b, ch->channel_id);
@@ -405,7 +407,7 @@ int cmd_getplaylist (SESSION * session, unsigned char *playlist_id,
 int cmd_changeplaylist (SESSION * session, unsigned char *playlist_id,
 			char *xml, int revision, int num_tracks, int checksum,
 			int collaborative, channel_callback callback,
-			void *private)
+			void *private_storage)
 {
 	CHANNEL *ch;
 	char buf[256];
@@ -414,7 +416,7 @@ int cmd_changeplaylist (SESSION * session, unsigned char *playlist_id,
 	strcpy (buf, "chplaylist-");
 	hex_bytes_to_ascii (playlist_id, buf + 11, 17);
 	buf[11 + 2 * 17] = 0;
-	ch = channel_register (buf, callback, private);
+	ch = channel_register (buf, callback, private_storage);
 
 	struct buf* b = buf_new();
 	buf_append_u16(b, ch->channel_id);
@@ -442,7 +444,7 @@ int cmd_ping_reply (SESSION * session)
 	int ret;
         unsigned long pong = 0;
 
-	if ((ret = packet_write (session, CMD_PONG, (void*)&pong, 4)) != 0) {
+	if ((ret = packet_write (session, CMD_PONG, (unsigned char*)&pong, 4)) != 0) {
 		DSFYDEBUG
 			("packet_write(cmd=0x49) returned %d, aborting!\n",
 			 ret);

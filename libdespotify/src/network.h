@@ -8,7 +8,8 @@
 #ifndef DESPOTIFY_NETWORK_H
 #define DESPOTIFY_NETWORK_H
 
-#ifdef __MINGW32__
+#ifdef BADA
+#elif defined __MINGW32__
 #define __use_winsock__
 #else
 #define __use_posix__
@@ -31,11 +32,16 @@
 
 #ifdef __use_winsock__
 #define sock_close(x) closesocket(x)
-#else
+#elif defined __use_posix__
 #define sock_close(x) close(x)
 #endif
 
+#ifdef BADA
+#include "bada_network.h"
+#else
 int network_init (void);
+int network_connect(char *host, int port);
 int network_cleanup (void);
+#endif
 
 #endif

@@ -30,10 +30,10 @@ int handle_secret_block (SESSION * session, unsigned char *payload, int len)
 
 	t = (unsigned int *) payload;
 	DSFYDEBUG ("Initial time %u (%ld seconds from now)\n",
-		 ntohl (*t), time (NULL) - ntohl (*t));
+			ntohl (*t), time (NULL) - ntohl (*t));
 	t++;
 	DSFYDEBUG ("Future time %u (%ld seconds in the future)\n",
-		 ntohl (*t), ntohl (*t) - time (NULL));
+			ntohl (*t), ntohl (*t) - time (NULL));
 
 	t++;
 	DSFYDEBUG ("Next value is %u\n", ntohl (*t));
@@ -71,11 +71,11 @@ int handle_channel (int cmd, unsigned char *payload, int len)
 {
 	if (cmd == CMD_CHANNELERR) {
 		DSFYDEBUG ("Channel %d got error %d (0x%02x)\n",
-			 ntohs (*(unsigned short *) payload),
-			 ntohs (*(unsigned short *) (payload + 2)),
-			 ntohs (*(unsigned short *) (payload + 2)))
+				ntohs (*(unsigned short *) payload),
+				ntohs (*(unsigned short *) (payload + 2)),
+				ntohs (*(unsigned short *) (payload + 2)))
 	}
-	
+
 	return channel_process (payload, len, cmd == CMD_CHANNELERR);
 }
 
@@ -85,51 +85,51 @@ int handle_aeskey (unsigned char *payload, int len)
 	int ret;
 
 	DSFYDEBUG ("Server said 0x0d (AES key) for channel %d\n",
-		   ntohs (*(unsigned short *) (payload + 2)))
-		if ((ch =
-		     channel_by_id (ntohs
-				    (*(unsigned short *) (payload + 2)))) !=
-			   NULL) {
+			ntohs (*(unsigned short *) (payload + 2)))
+	if ((ch =
+			channel_by_id (ntohs
+					(*(unsigned short *) (payload + 2)))) !=
+							NULL) {
 		ret = ch->callback (ch, payload + 4, len - 4);
 		channel_unregister (ch);
 	}
 	else {
 		DSFYDEBUG
-			("Command 0x0d: Failed to find channel with ID %d\n",
-			 ntohs (*(unsigned short *) (payload + 2)));
+		("Command 0x0d: Failed to find channel with ID %d\n",
+				ntohs (*(unsigned short *) (payload + 2)));
 	}
 
 	return ret;
 }
 
 int handle_aeskeyerr (unsigned char *payload) {
-    CHANNEL *ch;
-    struct despotify_session* ds;
-    int ret = 0;
+	CHANNEL *ch;
+	struct despotify_session* ds;
+	int ret = 0;
 
-    DSFYDEBUG("Server said 0x0e (AES key error) for channel %d\n",
-           ntohs (*(unsigned short *) (payload + 2)))
-		if ((ch =
-		     channel_by_id (ntohs
-				    (*(unsigned short *) (payload + 2)))) !=
-			   NULL) {
+	DSFYDEBUG("Server said 0x0e (AES key error) for channel %d\n",
+			ntohs (*(unsigned short *) (payload + 2)))
+	if ((ch =
+			channel_by_id (ntohs
+					(*(unsigned short *) (payload + 2)))) !=
+							NULL) {
 
-        ds = ch->private;
-        
-        if(ds->client_callback)
-	       ds->client_callback(ds, DESPOTIFY_TRACK_PLAY_ERROR, 
-                               NULL, 
-                               ds->client_callback_data);
+		ds = (struct despotify_session*)ch->private_storage;
+
+		if(ds->client_callback)
+			ds->client_callback(ds, DESPOTIFY_TRACK_PLAY_ERROR,
+					NULL,
+					ds->client_callback_data);
 
 		channel_unregister (ch);
 	}
 	else {
 		DSFYDEBUG
-			("Command 0x0e: Failed to find channel with ID %d\n",
-			 ntohs (*(unsigned short *) (payload + 2)));
+		("Command 0x0e: Failed to find channel with ID %d\n",
+				ntohs (*(unsigned short *) (payload + 2)));
 	}
 
-    return ret;
+	return ret;
 }
 
 static int handle_countrycode (SESSION * session, unsigned char *payload, int len)
@@ -143,21 +143,22 @@ static int handle_countrycode (SESSION * session, unsigned char *payload, int le
 
 static int handle_prodinfo (SESSION * session, unsigned char *payload, int len)
 {
-	xml_parse_prodinfo(&session->user_info, payload, len);
+	DSFYINFO("Prodinfo %s\n", payload);
+	//	xml_parse_prodinfo(&session->user_info, payload, len);
 	return 0;
 }
 
 static int handle_welcome (SESSION * session)
 {
-    /* signal "login complete" */
-    pthread_mutex_lock(&session->login_mutex);
-    pthread_cond_signal(&session->login_cond);
-    pthread_mutex_unlock(&session->login_mutex);
-    return 0;
+	/* signal "login complete" */
+	pthread_mutex_lock(&session->login_mutex);
+	pthread_cond_signal(&session->login_cond);
+	pthread_mutex_unlock(&session->login_mutex);
+	return 0;
 }
 
 int handle_packet (SESSION * session,
-		   int cmd, unsigned char *payload, unsigned short len)
+		int cmd, unsigned char *payload, unsigned short len)
 {
 	int error = 0;
 
@@ -182,9 +183,9 @@ int handle_packet (SESSION * session,
 		error = handle_aeskey (payload, len);
 		break;
 
-    case CMD_AESKEYERR:
-        error = handle_aeskeyerr (payload);
-        break;
+	case CMD_AESKEYERR:
+		error = handle_aeskeyerr (payload);
+		break;
 
 	case CMD_SHAHASH:
 		break;
@@ -195,7 +196,7 @@ int handle_packet (SESSION * session,
 
 	case CMD_P2P_INITBLK:
 		DSFYDEBUG ("Server said 0x21 (P2P initalization block)\n")
-			break;
+		break;
 
 	case CMD_NOTIFY:
 		/* HTML-notification, shown in a yellow bar in the official client */
@@ -213,7 +214,11 @@ int handle_packet (SESSION * session,
 	case CMD_PAUSE:
 		/* TODO: No GUI events in here.
 		event_msg_post (MSG_CLASS_GUI, MSG_GUI_PAUSE, NULL);
-		*/
+		 */
+		break;
+
+	default:
+		DSFYDEBUG("Unknown cmd: %d\n", cmd);
 		break;
 	}
 

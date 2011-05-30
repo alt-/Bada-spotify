@@ -20,7 +20,7 @@ static CHANNEL *head;
 static int next_channel_id;
 
 CHANNEL *channel_register (char *name, channel_callback callback,
-			   void *private)
+			   void *private_storage)
 {
 	CHANNEL *ch;
 	int id;
@@ -36,7 +36,7 @@ CHANNEL *channel_register (char *name, channel_callback callback,
 		}
 	}
 
-	ch = malloc (sizeof (CHANNEL));
+	ch = (CHANNEL *)malloc (sizeof (CHANNEL));
 	if (!ch)
 		return NULL;
 
@@ -54,7 +54,7 @@ CHANNEL *channel_register (char *name, channel_callback callback,
 	ch->name[sizeof (ch->name) - 1] = 0;
 
 	ch->callback = callback;
-	ch->private = private;
+	ch->private_storage = private_storage;
 
 	ch->next = head;
 	head = ch;
@@ -160,7 +160,9 @@ int channel_process (unsigned char *buf, unsigned short len, int error)
 				DSFYDEBUG
 					("not enough data! channel %d, header_len %d, len %d\n",
 					 ch->channel_id, header_len, len);
+#ifndef BADA
 				fhexdump8x32 (stderr, "payload:", ptr, len);
+#endif
 				return 0;
 			}
 			ch->header_id++;

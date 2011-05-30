@@ -11,6 +11,7 @@
 
 #include "network.h"
 
+#include <openssl/rsa.h>
 #include <openssl/rand.h>
 #include <openssl/err.h>
 
@@ -19,6 +20,8 @@
 #include "session.h"
 #include "packet.h"
 #include "util.h"
+
+#ifndef BADA
 
 static unsigned char DH_generator[1] = { 2 };
 
@@ -102,6 +105,7 @@ SESSION *session_init_client (void)
 
 	return session;
 }
+#endif
 
 void session_auth_set (SESSION * session, const char *username, const char *password)
 {
@@ -115,77 +119,54 @@ void session_auth_set (SESSION * session, const char *username, const char *pass
 	session->password[sizeof (session->password) - 1] = 0;
 }
 
+
 int session_connect (SESSION * session)
 {
-	struct addrinfo h, *airoot, *ai;
-	char host[1025 + 1], port[6], *service_list, *service;
+	struct srv_list service_list;
 
 	/* Lookup service hosts in DNS */
-        service_list = dns_srv_list ("_spotify-client._tcp.spotify.com");
-	if (!service_list) {
+    service_list = dns_srv_list ("_spotify-client._tcp.spotify.com");
+	if (service_list.len == 0) {
             DSFYDEBUG ("Service lookup failed. falling back to ap.spotify.com\n");
-            service_list = malloc(200);
-            strcpy (service_list, "ap.spotify.com:4070\n");
+            struct srv fallback;
+            fallback.host = strdup("ap.spotify.com");
+            fallback.port = 4070;
+            service_list.len = 1;
+            service_list.arr = (struct srv*)malloc(sizeof(struct srv));
+            service_list.arr[0] = fallback;
         }
 
+	unsigned int i;
+	for (i = 0; i < service_list.len; i++) {
+		struct srv service = service_list.arr[i];
+		DSFYDEBUG ("Connecting to %s:%d\n", service.host, service.port);
 
+		session->ap_sock = network_connect(service.host, service.port);
 
-	for (service = service_list; *service;) {
-		if (sscanf (service, "%[^:]:%5s\n", host, port) != 2)
-			return -1;
+		if (session->ap_sock != -1) {
+			/*
+			 * Save for later use in ConnectionInfo message
+			 * (too lazy to do getpeername() later ;)
+			 */
+			DSFYstrncpy (session->server_host, service.host, sizeof session->server_host);
+			session->server_port = service.port;
 
-		service += strlen (host) + 7;
-		DSFYDEBUG ("Connecting to %s:%s\n", host,
-			   port);
+			DSFYstrncpy (session->user_info.server_host, service.host,
+				     sizeof session->user_info.server_host);
+			session->user_info.server_port = service.port;
 
-		memset(&h, 0, sizeof(h));
-		h.ai_family = PF_UNSPEC;
-		h.ai_socktype = SOCK_STREAM;
-		h.ai_protocol = IPPROTO_TCP;
-		if (getaddrinfo (host, port, &h, &airoot)) {
-			DSFYDEBUG ("getaddrinfo(%s,%s) failed with error %d\n",
-					host, port, errno);
-			continue;
-		}
-
-		for(ai = airoot; ai; ai = ai->ai_next) {
-			if (ai->ai_family != AF_INET
-				&& ai->ai_family != AF_INET6)
-				continue;
-
-			session->ap_sock = socket (ai->ai_family,
-					ai->ai_socktype, ai->ai_protocol);
-			if (session->ap_sock < 0)
-				continue;
-
-			if (connect (session->ap_sock,
-				(struct sockaddr *) ai->ai_addr,
-				ai->ai_addrlen) != -1)
-				break;
-
-			sock_close (session->ap_sock);
-			session->ap_sock = -1;
-		}
-
-		freeaddrinfo (airoot);
-		if (session->ap_sock != -1)
 			break;
+		}
 	}
 
-	free (service_list);
+	service_list.len = 0;
+	for (i = 0; i < service_list.len; i++) {
+		free(service_list.arr[i].host);
+	}
+	free(service_list.arr);
+
 	if (session->ap_sock == -1)
 		return -1;
-
-	/*
-	 * Save for later use in ConnectionInfo message
-	 * (too lazy to do getpeername() later ;)
-	 */
-	DSFYstrncpy (session->server_host, host, sizeof session->server_host);
-	session->server_port = atoi(port);
-
-	DSFYstrncpy (session->user_info.server_host, host,
-		     sizeof session->user_info.server_host);
-	session->user_info.server_port = atoi(port);
 
 	return 0;
 }
@@ -213,8 +194,8 @@ void session_free (SESSION * session)
 	if (session->dh)
 		DH_free (session->dh);
 
-	if (session->rsa)
-		RSA_free (session->rsa);
+//	if (session->rsa)
+//		RSA_free (session->rsa);
 
 	pthread_cond_destroy(&session->login_cond);
 	pthread_mutex_destroy(&session->login_mutex);

@@ -11,6 +11,10 @@
 
 #include <sys/types.h>
 
+#ifdef BADA
+typedef unsigned int u_int32_t;
+#endif
+
 typedef struct {
     u_int32_t state[5];
     u_int32_t count[2];

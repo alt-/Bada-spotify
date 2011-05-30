@@ -19,7 +19,7 @@ struct buf {
     int size;
 };
 
-void* buf_new(void);
+struct buf* buf_new(void);
 void buf_free(struct buf* b);
 void buf_extend(struct buf* b, int len);
 void buf_append_data(struct buf* b, void* data, int len);

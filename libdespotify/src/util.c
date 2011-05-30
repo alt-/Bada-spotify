@@ -14,6 +14,7 @@
 
 #include "util.h"
 
+#ifndef BADA
 unsigned char *hex_ascii_to_bytes (char *ascii, unsigned char *bytes, int len)
 {
 	int i;
@@ -28,20 +29,23 @@ unsigned char *hex_ascii_to_bytes (char *ascii, unsigned char *bytes, int len)
 
 	return bytes;
 }
+#endif
 
 char *hex_bytes_to_ascii (unsigned char *bytes, char *ascii, int len)
 {
 	int i;
 
 	for (i = 0; i < len; i++)
-		sprintf (ascii + 2 * i, "%02x", bytes[i]);
+		snprintf (ascii + 2 * i, 3, "%02x", bytes[i]);
 
 	return ascii;
 }
 
 void hexdump8x32 (char *prefix, void *data, int len)
 {
+#ifndef BADA
 	fhexdump8x32 (stdout, prefix, data, len);
+#endif
 }
 
 void fhexdump8x32 (FILE * file, char *prefix, void *data, int len)
@@ -53,7 +57,7 @@ void fhexdump8x32 (FILE * file, char *prefix, void *data, int len)
 		 len >= 16 ? "\n" : strlen (prefix) >= 8 ? "\t" : "\t\t");
 	for (i = 0; i < len; i++) {
 		if (i % 32 == 0)
-			printf ("\t");
+			fprintf (file, "\t");
 		fprintf (file, "%02x", ptr[i]);
 		if (i % 32 == 31) {
 			fprintf (file, " [");
@@ -80,10 +84,11 @@ void fhexdump8x32 (FILE * file, char *prefix, void *data, int len)
 
 void logdata (char *prefix, int id, void *data, int datalen)
 {
+#ifndef BADA
 	char filename[100];
 	FILE *fd;
 
-	sprintf (filename, "spotify.%d.%s.%d", getpid (), prefix, id);
+	snprintf (filename, 100, "spotify.%d.%s.%d", getpid (), prefix, id);
 	if ((fd = fopen (filename, "wb")) != NULL) {
 		fwrite (data, 1, datalen, fd);
 		fclose (fd);
@@ -91,7 +96,9 @@ void logdata (char *prefix, int id, void *data, int datalen)
 
 	DSFYDEBUG ("  -- Saving 0x%04x (%d) bytes file '%s'\n", datalen,
 		   datalen, filename);
+#endif
 }
+
 
 ssize_t block_read (int fd, void *buf, size_t nbyte)
 {

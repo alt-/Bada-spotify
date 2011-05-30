@@ -9,11 +9,9 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <openssl/dh.h>
-#include <openssl/rsa.h>
 
 #include "despotify.h" /* struct user_info declaration */
 #include "shn.h"
-
 
 typedef struct session
 {
@@ -55,8 +53,8 @@ typedef struct session
 	char password[256];
 	char salt[10];
 
-        struct buf* init_client_packet;
-        struct buf* init_server_packet;
+    struct buf* init_client_packet;
+    struct buf* init_server_packet;
 
 	/*
 	 * Computed as SHA(salt || " " || password)
@@ -70,8 +68,8 @@ typedef struct session
 	 */
 	unsigned char auth_hash[20];
 
+	// TODO: Abstract away DH and RSA
 	DH *dh;
-	RSA *rsa;
 	unsigned char my_priv_key[96];
 	unsigned char my_pub_key[96];
 	unsigned char rsa_pub_exp[128];
@@ -128,10 +126,22 @@ typedef struct session
         pthread_cond_t  login_cond;
 } SESSION;
 
+#ifdef BADA
+#include "bada_session.h"
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+#ifndef BADA
 SESSION *session_init_client (void);
+#endif
 void session_auth_set (SESSION *, const char *, const char *);
 int session_connect (SESSION *);
-SESSION *session_init_client (void);
 void session_disconnect (SESSION *);
 void session_free (SESSION * c);
+#ifdef __cplusplus
+}
+#endif
+
 #endif

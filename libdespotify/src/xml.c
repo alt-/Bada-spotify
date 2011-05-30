@@ -12,9 +12,14 @@
 #include <locale.h>
 
 #include "despotify.h"
+#ifndef BADA
 #include "ezxml.h"
+#endif
 #include "util.h"
 #include "xml.h"
+
+// TODO: Implement using Osp::Xml
+#ifdef undef
 
 void xmlstrncpy(char* dest, int len, ezxml_t xml, ...)
 {
@@ -548,3 +553,5 @@ char* xml_gen_tag(char* name, char* content)
 
     return ret;
 }
+
+#endif

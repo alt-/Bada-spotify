@@ -22,18 +22,18 @@ void buf_extend(struct buf* b, int len)
     if (b->len + len > b->size) {
         while (b->len + len > b->size)
             b->size *= 2;
-        b->ptr = realloc(b->ptr, b->size);
+        b->ptr = (unsigned char*)realloc(b->ptr, b->size);
         assert(b->ptr);
     }
 }
 
-void* buf_new(void)
+struct buf* buf_new(void)
 {
-    struct buf* b = malloc(sizeof(struct buf));
+    struct buf* b = (struct buf*)malloc(sizeof(struct buf));
     assert(b);
     b->len = 0;
     b->size = START_SIZE;
-    b->ptr = malloc(START_SIZE);
+    b->ptr = (unsigned char*)malloc(START_SIZE);
     assert(b->ptr);
 
     return b;

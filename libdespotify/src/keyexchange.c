@@ -46,7 +46,7 @@ int send_client_initial_packet (SESSION * session)
 {
 	int ret;
 	unsigned int len_idx;
-	
+
 	struct buf* b = buf_new();
 
 	buf_append_u16 (b, 3); /* protocol version */
@@ -63,15 +63,15 @@ int send_client_initial_packet (SESSION * session)
 	buf_append_data (b, session->client_random_16, 16);
 	buf_append_data (b, session->my_pub_key, 96);
 
-	BN_bn2bin (session->rsa->n, session->rsa_pub_exp);
+	//	BN_bn2bin (session->rsa->n, session->rsa_pub_exp);
 	buf_append_data (b, session->rsa_pub_exp, sizeof(session->rsa_pub_exp));
 
 	buf_append_u8 (b, 0); /* length of random data */
 	buf_append_u8 (b, session->username_len);
 	buf_append_u16(b, 0x0100); /* unknown */
-        /* <-- random data would go here */
+	/* <-- random data would go here */
 	buf_append_data (b, (unsigned char *) session->username,
-			   session->username_len);
+			session->username_len);
 	buf_append_u8 (b, 0x40); /* unknown */
 
 	/*
@@ -84,21 +84,21 @@ int send_client_initial_packet (SESSION * session)
 #ifdef DEBUG_LOGIN
 	hexdump8x32 ("initial client packet", b->ptr, b->len);
 #endif
-        ret = send (session->ap_sock, b->ptr, b->len, 0);
+	ret = send (session->ap_sock, b->ptr, b->len, 0);
 	if (ret <= 0) {
 		DSFYDEBUG("connection lost\n");
 		buf_free(b);
 		return -1;
 	}
 	else if (ret != b->len) {
-                DSFYDEBUG("only wrote %d of %d bytes\n", ret, b->len);
+		DSFYDEBUG("only wrote %d of %d bytes\n", ret, b->len);
 		buf_free(b);
 		return -1;
 	}
 
-        /* save initial server packet for auth hmac generation */
-        session->init_client_packet = b;
-	
+	/* save initial server packet for auth hmac generation */
+	session->init_client_packet = b;
+
 	return 0;
 }
 
@@ -107,191 +107,195 @@ int read_server_initial_packet (SESSION * session)
 	char buf[512];
 	unsigned char padlen;
 	int ret;
-        struct buf* save = buf_new();
+	struct buf* save = buf_new();
 
-        /* read 2 status bytes */
-        ret = block_read(session->ap_sock, session->server_random_16, 2);
+	/* read 2 status bytes */
+	ret = block_read(session->ap_sock, session->server_random_16, 2);
 	if (ret < 2) {
-            DSFYDEBUG("Failed to read status bytes\n");
-            DSFYDEBUG("Remote host was %s:%d\n",
-                      session->server_host, session->server_port);
-            if (ret > 0)
-                hexdump8x32
-                    ("read_server_initial_packet, server_random_16",
-                     session->server_random_16, ret);
-            return -90;
+		DSFYDEBUG("Failed to read status bytes\n");
+		DSFYDEBUG("Remote host was %s:%d\n",
+				session->server_host, session->server_port);
+		if (ret > 0)
+			hexdump8x32
+			("read_server_initial_packet, server_random_16",
+					session->server_random_16, ret);
+		return -90;
 	}
 
 #ifdef DEBUG_LOGIN
 	hexdump8x32 ("read_server_initial_packet, server_random_16",
-		     session->server_random_16, ret);
+			session->server_random_16, ret);
 #endif
 
-        if (session->server_random_16[0] != 0) {
-            DSFYDEBUG("Bad response: %#02x %#02x\n",
-                      session->server_random_16[0],
-                      session->server_random_16[1]);
-            switch (session->server_random_16[1]) {
-                case 1: /* client upgrade required */
-                    return -11;
-                    
-                case 3: /* user not found */
-                    return -13;
-                    
-                case 4: /* account has been disabled */
-                    return -14;
-                    
-                case 6: /* you need to complete your account details */
-                    return -16;
-                    
-                case 9: /* country mismatch */
-                    return -19;
-                    
-                default: /* unknown error */
-                    return -91;
-            }
-        }
+	if (session->server_random_16[0] != 0) {
+#ifndef BADA
+		DSFYDEBUG("Bad response: %#02x %#02x\n",
+#else
+		DSFYDEBUG("Bad response: %d %d\n",
+#endif
+				session->server_random_16[0],
+				session->server_random_16[1]);
+		switch (session->server_random_16[1]) {
+		case 1: /* client upgrade required */
+			return -11;
 
-        /* read remaining 14 random bytes */
-        ret = block_read(session->ap_sock, session->server_random_16 + 2, 14);
+		case 3: /* user not found */
+			return -13;
+
+		case 4: /* account has been disabled */
+			return -14;
+
+		case 6: /* you need to complete your account details */
+			return -16;
+
+		case 9: /* country mismatch */
+			return -19;
+
+		default: /* unknown error */
+			return -91;
+		}
+	}
+
+	/* read remaining 14 random bytes */
+	ret = block_read(session->ap_sock, session->server_random_16 + 2, 14);
 	if (ret < 14) {
-            DSFYDEBUG("Failed to read server random\n");
-            DSFYDEBUG("Remote host was %s:%d\n",
-                      session->server_host, session->server_port);
-            if (ret > 0)
-                hexdump8x32("read_server_initial_packet, server_random_16",
-                            session->server_random_16+2, ret);
-            return -92;
+		DSFYDEBUG("Failed to read server random\n");
+		DSFYDEBUG("Remote host was %s:%d\n",
+				session->server_host, session->server_port);
+		if (ret > 0)
+			hexdump8x32("read_server_initial_packet, server_random_16",
+					session->server_random_16+2, ret);
+		return -92;
 	}
-        buf_append_data(save, session->server_random_16, 16);
-	
-        /* read public key */
-        ret = block_read(session->ap_sock, session->remote_pub_key, 96);
+	buf_append_data(save, session->server_random_16, 16);
+
+	/* read public key */
+	ret = block_read(session->ap_sock, session->remote_pub_key, 96);
 	if (ret != 96) {
-            DSFYDEBUG("Failed to read 'remote_pub_key'\n");
-            return -93;
+		DSFYDEBUG("Failed to read 'remote_pub_key'\n");
+		return -93;
 	}
-        buf_append_data(save, session->remote_pub_key, 96);
+	buf_append_data(save, session->remote_pub_key, 96);
 #ifdef DEBUG_LOGIN
 	hexdump8x32 ("read_server_initial_packet, server pub key",
-		     session->remote_pub_key, 96);
+			session->remote_pub_key, 96);
 #endif
 
-        /* read server blob */
-        ret = block_read(session->ap_sock, session->random_256, 256);
+	/* read server blob */
+	ret = block_read(session->ap_sock, session->random_256, 256);
 	if (ret != 256) {
-            DSFYDEBUG("Failed to read 'random_256', got %d of 256 bytes\n", ret);
-            return -94;
+		DSFYDEBUG("Failed to read 'random_256', got %d of 256 bytes\n", ret);
+		return -94;
 	}
-        buf_append_data(save, session->random_256, 256);
+	buf_append_data(save, session->random_256, 256);
 #ifdef DEBUG_LOGIN
 	hexdump8x32 ("read_server_initial_packet, random_256",
-		     session->random_256, 256);
+			session->random_256, 256);
 #endif
 
-        /* read salt */
-        ret = block_read(session->ap_sock, session->salt, 10);
+	/* read salt */
+	ret = block_read(session->ap_sock, session->salt, 10);
 	if (ret != 10) {
-            DSFYDEBUG("Failed to read 'salt'\n");
-            return -95;
+		DSFYDEBUG("Failed to read 'salt'\n");
+		return -95;
 	}
-        buf_append_data(save, session->salt, 10);
+	buf_append_data(save, session->salt, 10);
 #ifdef DEBUG_LOGIN
 	hexdump8x32 ("read_server_initial_packet, salt", session->salt, 10);
 #endif
 
-        /* read padding length */
-        ret = block_read(session->ap_sock, &padlen, 1);
+	/* read padding length */
+	ret = block_read(session->ap_sock, &padlen, 1);
 	if (ret != 1) {
-            DSFYDEBUG("Failed to read 'padding length'\n");
-            return -96;
+		DSFYDEBUG("Failed to read 'padding length'\n");
+		return -96;
 	}
 	assert (padlen > 0);
-        buf_append_u8(save, padlen);
+	buf_append_u8(save, padlen);
 
-        /* read username length */
-        ret = block_read(session->ap_sock, &session->username_len, 1);
+	/* read username length */
+	ret = block_read(session->ap_sock, &session->username_len, 1);
 	if (ret != 1) {
-            DSFYDEBUG("Failed to read 'username_len'\n");
-            return -97;
+		DSFYDEBUG("Failed to read 'username_len'\n");
+		return -97;
 	}
-        buf_append_u8(save, session->username_len);
-                
-        /* read challenge lengths */
-        unsigned short chalen[4];
-        ret = block_read(session->ap_sock, chalen, 8);
+	buf_append_u8(save, session->username_len);
+
+	/* read challenge lengths */
+	unsigned short chalen[4];
+	ret = block_read(session->ap_sock, chalen, 8);
 	if (ret != 8) {
-            DSFYDEBUG("Failed to read challenge lengths\n");
-            return -98;
+		DSFYDEBUG("Failed to read challenge lengths\n");
+		return -98;
 	}
-        buf_append_data(save, chalen, 8);
-        
-        /* read packet padding */
-        ret = block_read(session->ap_sock, buf, padlen);
+	buf_append_data(save, chalen, 8);
+
+	/* read packet padding */
+	ret = block_read(session->ap_sock, buf, padlen);
 	if (ret != padlen) {
-            DSFYDEBUG("Failed to read 'padding'\n");
-            return -99;
+		DSFYDEBUG("Failed to read 'padding'\n");
+		return -99;
 	}
-        buf_append_data(save, buf, padlen);
+	buf_append_data(save, buf, padlen);
 #ifdef DEBUG_LOGIN
 	hexdump8x32 ("read_server_initial_packet, padding", buf, padlen);
 #endif
 
-        /* read username */
-        ret = block_read(session->ap_sock,
-                         session->username, session->username_len);
+	/* read username */
+	ret = block_read(session->ap_sock,
+			session->username, session->username_len);
 	if (ret != session->username_len) {
-            DSFYDEBUG("Failed to read 'username'\n");
-            return -100;
+		DSFYDEBUG("Failed to read 'username'\n");
+		return -100;
 	}
-        buf_append_data(save, session->username, session->username_len);
+	buf_append_data(save, session->username, session->username_len);
 	session->username[session->username_len] = 0;
 #ifdef DEBUG_LOGIN
 	hexdump8x32 ("read_server_initial_packet, username",
-		     session->username, session->username_len);
+			session->username, session->username_len);
 #endif
 
-        /* read puzzle challenge */
-        {
-            int puzzle_len = ntohs(chalen[0]);
-            int len1 = ntohs(chalen[1]);
-            int len2 = ntohs(chalen[2]);
-            int len3 = ntohs(chalen[3]);
-            int totlen = puzzle_len + len1 + len2 + len3;
-            int normalize = 0;
+	/* read puzzle challenge */
+	{
+		int puzzle_len = ntohs(chalen[0]);
+		int len1 = ntohs(chalen[1]);
+		int len2 = ntohs(chalen[2]);
+		int len3 = ntohs(chalen[3]);
+		int totlen = puzzle_len + len1 + len2 + len3;
+		int normalize = 0;
 
-            struct buf* b = buf_new();
-            buf_extend(b, totlen);
-            
-            ret = block_read(session->ap_sock, b->ptr, totlen);
-            if (ret != totlen) {
-                DSFYDEBUG("Failed to read puzzle\n");
-                buf_free(b);
-                return -101;
-            }
-            buf_append_data(save, b->ptr, totlen);
+		struct buf* b = buf_new();
+		buf_extend(b, totlen);
+
+		ret = block_read(session->ap_sock, b->ptr, totlen);
+		if (ret != totlen) {
+			DSFYDEBUG("Failed to read puzzle\n");
+			buf_free(b);
+			return -101;
+		}
+		buf_append_data(save, b->ptr, totlen);
 #ifdef DEBUG_LOGIN
-            hexdump8x32("read_server_initial_packet, puzzle", b->ptr, totlen);
+		hexdump8x32("read_server_initial_packet, puzzle", b->ptr, totlen);
 #endif
-            
 
-            if (b->ptr[0] == 1) {
-                session->puzzle_denominator = b->ptr[1];
-                memcpy(&normalize, b->ptr+2, sizeof(int));
-                session->puzzle_magic = ntohl(normalize);
-            }
-            else {
-                DSFYDEBUG("Unexpected puzzle challenge\n");
-                hexdump8x32("read_server_initial_packet, puzzle", b->ptr, totlen);
-                buf_free(b);
-                return -102;
-            }
 
-            buf_free(b);
-        }
+		if (b->ptr[0] == 1) {
+			session->puzzle_denominator = b->ptr[1];
+			memcpy(&normalize, b->ptr+2, sizeof(int));
+			session->puzzle_magic = ntohl(normalize);
+		}
+		else {
+			DSFYDEBUG("Unexpected puzzle challenge\n");
+			hexdump8x32("read_server_initial_packet, puzzle", b->ptr, totlen);
+			buf_free(b);
+			return -102;
+		}
 
-        session->init_server_packet = save;
-        
+		buf_free(b);
+	}
+
+	session->init_server_packet = save;
+
 	return 0;
 }
 
@@ -320,8 +324,9 @@ int key_init (SESSION * session)
 	 *
 	 */
 	pub_key = BN_bin2bn (session->remote_pub_key, 96, NULL);
-        int i = DH_compute_key (session->shared_key, pub_key, session->dh);
-	if (i < 0) {
+	int i = DH_compute_key (session->shared_key, pub_key, session->dh);
+	assert(i >= 0);
+	/*	if (i < 0) {
 		FILE *fd = fopen ("/tmp/despotify-spotify-pubkey", "w");
 		fwrite (pub_key, 1, 96, fd);
 		fclose (fd);
@@ -329,15 +334,16 @@ int key_init (SESSION * session)
 			 "Failed to compute shared key, error code %d\n", i);
                 return -1;
 	}
+	 */
 
 #ifdef DEBUG_LOGIN
 	hexdump8x32 ("key_init, my private key", session->my_priv_key, 96);
 	hexdump8x32 ("key_init, my public key", session->my_pub_key, 96);
 	hexdump8x32 ("key_init, remote public key", session->remote_pub_key,
-		     96);
+			96);
 	hexdump8x32 ("key_init, shared key", session->shared_key, 96);
 #endif
-        BN_free(pub_key);
+	BN_free(pub_key);
 
 	/*
 	 * Prepare a message to authenticate.
@@ -391,12 +397,12 @@ int key_init (SESSION * session)
 
 #ifdef DEBUG_LOGIN
 		hexdump8x32 ("key_init, HMAC message", message,
-			     sizeof (message));
+				sizeof (message));
 #endif
 
-	        sha1_hmac(session->shared_key, 96, message,
-			  sizeof (message), hmac_ptr);
-		
+		sha1_hmac(session->shared_key, 96, message,
+				sizeof (message), hmac_ptr);
+
 		/*
 		 * Overwrite the 20 first bytes of the message with output from this round
 		 *
@@ -432,5 +438,5 @@ int key_init (SESSION * session)
 	hexdump8x32 ("key_init, key_recv", session->key_recv, 32);
 #endif
 
-        return 0;
+	return 0;
 }

@@ -19,7 +19,10 @@
 	#define __BYTE_ORDER _BYTE_ORDER
 	#define __LITTLE_ENDIAN _LITTLE_ENDIAN
 #endif
-
+#ifdef BADA
+	#define __LITTLE_ENDIAN 0
+	#define __BYTE_ORDER __LITTLE_ENDIAN
+#endif
 
 #if defined(__BYTE_ORDER)
 	#if __BYTE_ORDER == __LITTLE_ENDIAN

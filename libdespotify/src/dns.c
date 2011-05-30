@@ -21,20 +21,29 @@
 static int initialized;
 
 /*
- * Return a string with all SRV records for a given hostname
- * Example: foo.example.net:42\nrazor.example.net:1911\n
- *
+ * Returns all SRV records for a given hostname
  */
-char *dns_srv_list (char *hostname)
+struct srv_list dns_srv_list (char *hostname)
 {
-	char *svr_list = NULL;
+	struct srv_list svr_list;
+	svr_list.arr = NULL;
+	svr_list.len = 0;
     int i,j;
 	char *svr[10];
 	unsigned short svr_prio[10];
 	unsigned short svr_port[10];
 	int n_srv, lowest_prio;
-	
-	#ifdef __use_posix__
+
+	#ifdef BADA
+	// TODO: Implement
+	n_srv = 0;
+	svr[n_srv] = strdup ("a1.spotify.com");
+	int prio = 10;
+	int port = 4070;
+	svr_prio[n_srv] = prio;
+	svr_port[n_srv] = port;
+	n_srv++;
+	#elif __use_posix__
 	int alen, hlen;
 	char host[1024];
 	unsigned char answer[1024], *p;
@@ -109,23 +118,19 @@ char *dns_srv_list (char *hostname)
 
     #endif
 
+
 	lowest_prio = 0;
 	for (i = 0; i < n_srv; i++) {
 		for (j = 0; j < n_srv; j++)
 			if (svr_prio[lowest_prio] > svr_prio[j])
 				lowest_prio = j;
-		svr_list =
-			realloc (svr_list, (svr_list ? strlen (svr_list) : 0)
-				 + strlen (svr[lowest_prio]) + 6 + 2);
-		if (!i)
-			sprintf (svr_list, "%s:%05d\n", svr[lowest_prio],
-				 svr_port[lowest_prio]);
-		else
-			sprintf (svr_list + strlen (svr_list), "%s:%d\n",
-				 svr[lowest_prio], svr_port[lowest_prio]);
+
+		svr_list.len++;
+		svr_list.arr = (struct srv*)realloc(svr_list.arr, sizeof(struct srv)*svr_list.len);
+		svr_list.arr[svr_list.len - 1].host = svr[lowest_prio];
+		svr_list.arr[svr_list.len - 1].port = svr_port[lowest_prio];
 
 		svr_prio[lowest_prio] = (unsigned short) ~0;
-		free (svr[lowest_prio]);
 	}
 
 	return svr_list;
@@ -139,11 +144,11 @@ in_addr_t dns_resolve_name (char *hostname)
 {
 	struct hostent *he;
 	in_addr_t ip;
-	
 
 	if ((ip = inet_addr (hostname)) == INADDR_NONE) {
-		if ((he = gethostbyname (hostname)) != NULL)
+		if ((he = gethostbyname (hostname)) != NULL) {
 			memcpy (&ip, he->h_addr_list[0], 4);
+		} else return 0;
 	}
 
 	return ip;

@@ -28,15 +28,15 @@ void auth_generate_auth_hash (SESSION * session)
 
 	SHA1Init (&ctx);
 
-	SHA1Update (&ctx, session->salt, 10);
-	SHA1Update (&ctx, " ", 1);
-	SHA1Update (&ctx, session->password, strlen (session->password));
+	SHA1Update (&ctx, (unsigned char *)session->salt, 10);
+	SHA1Update (&ctx, (unsigned char *)" ", 1);
+	SHA1Update (&ctx, (unsigned char *)session->password, strlen (session->password));
 
 	SHA1Final (session->auth_hash, &ctx);
 
 #ifdef DEBUG_LOGIN
 	hexdump8x32 ("auth_generate_auth_hash, auth_hash", session->auth_hash,
-		     20);
+			20);
 #endif
 }
 
@@ -68,7 +68,7 @@ int do_auth (SESSION * session)
 	 *
 	 */
 	auth_generate_auth_hmac (session, session->auth_hmac,
-				 sizeof (session->auth_hmac));
+			sizeof (session->auth_hmac));
 
 	if (send_client_auth (session)) {
 		DSFYDEBUG("do_auth(): send_client_auth() failed\n");
@@ -80,44 +80,44 @@ int do_auth (SESSION * session)
 		return -1;
 	}
 
-        if (session->init_client_packet)
-            buf_free(session->init_client_packet);
-        if (session->init_server_packet)
-            buf_free(session->init_server_packet);
-        
+	if (session->init_client_packet)
+		buf_free(session->init_client_packet);
+	if (session->init_server_packet)
+		buf_free(session->init_server_packet);
+
 	return 0;
 }
 
 void auth_generate_auth_hmac (SESSION * session, unsigned char *auth_hmac,
-			      unsigned int mac_len)
+		unsigned int mac_len)
 {
-        (void)mac_len;
-        struct buf* buf = buf_new();
-	
+	(void)mac_len;
+	struct buf* buf = buf_new();
+
 	buf_append_data(buf, session->init_client_packet->ptr,
-                        session->init_client_packet->len);
+			session->init_client_packet->len);
 	buf_append_data(buf,  session->init_server_packet->ptr,
-                        session->init_server_packet->len);
-        buf_append_u8(buf, 0); /* random data length */
-        buf_append_u8(buf, 0); /* unknown */
-        buf_append_u16(buf, 8); /* puzzle solution length */
-        buf_append_u32(buf, 0); /* unknown */
-        /* <-- random data would go here */
-        buf_append_data(buf, session->puzzle_solution, 8);
+			session->init_server_packet->len);
+	buf_append_u8(buf, 0); /* random data length */
+	buf_append_u8(buf, 0); /* unknown */
+	buf_append_u16(buf, 8); /* puzzle solution length */
+	buf_append_u32(buf, 0); /* unknown */
+	/* <-- random data would go here */
+	buf_append_data(buf, session->puzzle_solution, 8);
 
 #ifdef DEBUG_LOGIN
 	hexdump8x32 ("auth_generate_auth_hmac, HMAC message", buf->ptr,
-		     buf->len);
+			buf->len);
 	hexdump8x32 ("auth_generate_auth_hmac, HMAC key", session->key_hmac,
-		     sizeof (session->key_hmac));
+			sizeof (session->key_hmac));
 #endif
 
 	sha1_hmac ( session->key_hmac, sizeof (session->key_hmac),
-		    buf->ptr, buf->len, auth_hmac);
+			buf->ptr, buf->len, auth_hmac);
 
 #ifdef DEBUG_LOGIN
 	hexdump8x32 ("auth_generate_auth_hmac, HMAC digest", auth_hmac,
-		     mac_len);
+			mac_len);
 #endif
 
 	buf_free(buf);
@@ -126,22 +126,22 @@ void auth_generate_auth_hmac (SESSION * session, unsigned char *auth_hmac,
 int send_client_auth (SESSION * session)
 {
 	int ret;
-        struct buf* buf = buf_new();
+	struct buf* buf = buf_new();
 
 	buf_append_data(buf, session->auth_hmac, 20);
-        buf_append_u8(buf, 0); /* random data length */
-        buf_append_u8(buf, 0); /* unknown */
-        buf_append_u16(buf, 8); /* puzzle solution length */
-        buf_append_u32(buf, 0);
-        /* <-- random data would go here */
+	buf_append_u8(buf, 0); /* random data length */
+	buf_append_u8(buf, 0); /* unknown */
+	buf_append_u16(buf, 8); /* puzzle solution length */
+	buf_append_u32(buf, 0);
+	/* <-- random data would go here */
 	buf_append_data (buf, session->puzzle_solution, 8);
 
 #ifdef DEBUG_LOGIN
 	hexdump8x32 ("send_client_auth, second client packet", buf->ptr,
-		     buf->len);
+			buf->len);
 #endif
 
-        ret = send(session->ap_sock, buf->ptr, buf->len, 0);
+	ret = send(session->ap_sock, buf->ptr, buf->len, 0);
 	if (ret <= 0) {
 		DSFYDEBUG("send_client_auth(): connection lost\n");
 		buf_free(buf);
@@ -149,13 +149,13 @@ int send_client_auth (SESSION * session)
 	}
 	else if (ret != buf->len) {
 		DSFYDEBUG("send_client_auth(): only wrote %d of %d bytes\n",
-			ret, buf->len);
+				ret, buf->len);
 		buf_free(buf);
 		return -1;
 	}
 
 	buf_free(buf);
-	
+
 	return 0;
 }
 
@@ -165,15 +165,15 @@ int read_server_auth_response (SESSION * session)
 	unsigned char payload_len;
 	int ret;
 
-        ret = block_read(session->ap_sock, buf, 2);
+	ret = block_read(session->ap_sock, buf, 2);
 	if (ret != 2) {
-            DSFYDEBUG("Failed to read 'status' + length byte, got %d bytes\n", ret);
-            return -1;
+		DSFYDEBUG("Failed to read 'status' + length byte, got %d bytes\n", ret);
+		return -1;
 	}
 
 	if (buf[0] != 0x00) {
-            DSFYDEBUG("Authentication failed with error 0x%02x, bad password?\n", buf[1]);
-            return -1;
+		DSFYDEBUG("Authentication failed with error 0x%02x, bad password?\n", buf[1]);
+		return -1;
 	}
 
 	/* Payload length + this byte must not be zero(?) */
@@ -181,11 +181,11 @@ int read_server_auth_response (SESSION * session)
 
 	payload_len = buf[1];
 
-        ret = block_read (session->ap_sock, buf, payload_len);
+	ret = block_read (session->ap_sock, buf, payload_len);
 	if (ret != payload_len) {
-            DSFYDEBUG("Failed to read 'payload', got %d of %u bytes\n",
-                      ret, payload_len);
-            return -1;
+		DSFYDEBUG("Failed to read 'payload', got %d of %u bytes\n",
+				ret, payload_len);
+		return -1;
 	}
 #ifdef DEBUG_LOGIN
 	hexdump8x32 ("read_server_auth_response, payload", buf, payload_len);
