@@ -267,13 +267,13 @@ const char *despotify_get_error(struct despotify_session *ds);
 
 /* Browse functions.  */
 struct artist_browse* despotify_get_artist(struct despotify_session* ds,
-                                           char* artist_id);
+                                           unsigned char* artist_id);
 struct album_browse* despotify_get_album(struct despotify_session* ds,
-                                         char* album_id);
+                                         unsigned char* album_id);
 struct track* despotify_get_tracks(struct despotify_session* ds, char* track_ids[], int num_tracks);
 struct track* despotify_get_track(struct despotify_session* ds, char* track_id);
 void* despotify_get_image(struct despotify_session* ds,
-                          char* image_id, int* len);
+                          unsigned char* image_id, unsigned int* len);
 
 void despotify_free_artist_browse(struct artist_browse* a);
 void despotify_free_album_browse(struct album_browse* a);
@@ -293,7 +293,7 @@ void despotify_free_search(struct search_result *search);
 
 /* Playlist handling. */
 struct playlist* despotify_get_playlist(struct despotify_session *ds,
-                                        char* playlist_id, bool cache_do_store);
+                                        unsigned char* playlist_id, bool cache_do_store);
 struct playlist* despotify_get_stored_playlists(struct despotify_session *ds);
 bool despotify_rename_playlist(struct despotify_session *ds,
                                struct playlist *playlist, char *name);

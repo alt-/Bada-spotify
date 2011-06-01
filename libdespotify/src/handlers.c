@@ -143,8 +143,7 @@ static int handle_countrycode (SESSION * session, unsigned char *payload, int le
 
 static int handle_prodinfo (SESSION * session, unsigned char *payload, int len)
 {
-	DSFYINFO("Prodinfo %s\n", payload);
-	//	xml_parse_prodinfo(&session->user_info, payload, len);
+	xml_parse_prodinfo(&session->user_info, payload, len);
 	return 0;
 }
 

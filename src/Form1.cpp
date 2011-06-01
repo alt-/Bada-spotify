@@ -34,16 +34,9 @@ public:
 	        return new Boolean(false);
 	    }
 
-	    AppLog("Getting track");
-	    struct track* t = despotify_link_get_track(ds, despotify_link_from_uri("spotify:track:0RaSazqzf6a90Kn6WgFcuA"));
-	    if(t == 0) return new Boolean(false);
-
-	    // Fake it til you make it:
-	    strncpy(t->title, "dummy", strlen("dummy"));
-	    strncpy((char*)t->track_id, "1c2e2540e4284c388a1f673d385cff10", 33);
-	    strncpy((char*)t->file_id, "8371bfa80cbff81887881648e5346d0192309d83", 41);
-	    AppLog("Playing track");
-	    despotify_play(ds, t, false);
+	    AppLog("Playing playlist");
+	    struct playlist* p = despotify_link_get_playlist(ds, despotify_link_from_uri("spotify:user:janne.husberg:playlist:1MJf1uSlwker6wOIjUguK6"));
+	    despotify_play(ds, p->tracks, true);
 
 	    return new Boolean(true);
 	}

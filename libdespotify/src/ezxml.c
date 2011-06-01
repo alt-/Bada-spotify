@@ -24,8 +24,6 @@
 
 #define EZXML_NOMMAP
 
-#ifndef BADA
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -1017,5 +1015,3 @@ int main(int argc, char **argv)
     return (i) ? 1 : 0;
 }
 #endif // EZXML_TEST
-
-#endif

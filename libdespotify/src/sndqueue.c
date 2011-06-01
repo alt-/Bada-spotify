@@ -495,7 +495,7 @@ int snd_get_pcm(struct despotify_session* ds, struct pcm_data* pcm)
 
 	if(!ds->ready) {
 //		if(ds->fifo->totbytes < (ds->fifo->maxbytes - SUBSTREAM_SIZE)) {
-		if(ds->fifo->totbytes < 64 * 1024) {
+		if(ds->fifo->totbytes < 128 * 1024) {
 			DSFYINFO("Prefilling decoder buffer: %d", ds->fifo->totbytes);
 			pcm->len = 0;
 			shortsleep();
